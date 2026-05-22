@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Pembuat PDF Multi Halaman</title>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+<style>
+
+body{
+    font-family:Arial,sans-serif;
+    background:#f4f6f9;
+    padding:20px;
+    color:#333;
+}
+
+.container{
+    max-width:900px;
+    margin:auto;
+}
+
+h1{
+    text-align:center;
+    margin-bottom:25px;
+}
+
+.form-box{
+    background:white;
+    padding:25px;
+    border-radius:10px;
+    margin-bottom:20px;
+    box-shadow:0 4px 15px rgba(0,0,0,0.1);
+    position:relative;
+}
+
+.form-title{
+    font-size:20px;
+    font-weight:bold;
+    margin-bottom:15px;
+}
+
+label{
+    display:block;
+    margin-top:15px;
+    margin-bottom:7px;
+    font-weight:bold;
+}
+
+input[type="text"],
+input[type="file"]{
+    width:100%;
+    padding:12px;
+    border:1px solid #ccc;
+    border-radius:5px;
+    box-sizing:border-box;
+}
+
+.preview{
+    width:100%;
+    max-height:300px;
+    object-fit:contain;
+    border:1px solid #ddd;
+    margin-top:15px;
+    border-radius:5px;
+    display:none;
+}
+
+.buttons{
+    display:flex;
+    gap:15px;
+    flex-wrap:wrap;
+    margin-top:20px;
+}
+
+button{
+    flex:1;
+    min-width:200px;
+    padding:15px;
+    border:none;
+    border-radius:5px;
+    color:white;
+    font-size:16px;
+    font-weight:bold;
+    cursor:pointer;
+}
+
+.add-btn{
+    background:#28a745;
+}
+
+.add-btn:hover{
+    background:#1e7e34;
+}
+
+.preview-btn{
+    background:#ff9800;
+}
+
+.preview-btn:hover{
+    background:#d97d00;
+}
+
+.download-btn{
+    background:#004085;
+}
+
+.download-btn:hover{
+    background:#002752;
+}
+
+.delete-btn{
+    background:#dc3545;
+    margin-top:20px;
+}
+
+.delete-btn:hover{
+    background:#b02a37;
+}
+
+.loading{
+    opacity:0.7;
+    pointer-events:none;
+}
+
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+<h1>karya Merki Ganteng khusus untuk permudah Mb Catur Seorang</h1>
+
+<div id="allForms"></div>
+
+<div class="buttons">
+    <button class="add-btn" onclick="tambahForm()">
+        + TAMBAH DATA
+    </button>
+
+    <button class="preview-btn" onclick="buatPDF(true)">
+        PREVIEW PDF
+    </button>
+
+    <button class="download-btn" onclick="buatPDF(false)">
+        DOWNLOAD PDF
+    </button>
+</div>
+
+</div>
+
+
+
+<script>
+
+let jumlahForm = 0;
+
+
+// =======================
+// TAMBAH FORM
+// =======================
+
+function tambahForm(){
+
+    jumlahForm++;
+
+    const div = document.createElement('div');
+
+    div.className = "form-box";
+
+    div.id = "form-"+jumlahForm;
+
+    div.innerHTML = `
+
+        <div class="form-title">
+            Data ${jumlahForm}
+        </div>
+
+        <label>Nama (Opsional)</label>
+        <input type="text" class="namaInput">
+
+        <label>Link URL untuk QR Code</label>
+        <input type="text" class="linkInput">
+
+        <label>Upload Foto</label>
+        <input type="file" class="fileInput" accept="image/*">
+
+        <img class="preview">
+
+        <button class="delete-btn"
+            onclick="hapusForm(${jumlahForm})">
+            HAPUS DATA
+        </button>
+
+    `;
+
+    document.getElementById('allForms').appendChild(div);
+
+
+
+
+    // =======================
+    // PREVIEW GAMBAR
+    // =======================
+
+    const fileInput = div.querySelector('.fileInput');
+    const preview = div.querySelector('.preview');
+
+    fileInput.addEventListener('change', function(){
+
+        const file = this.files[0];
+
+        if(!file) return;
+
+        const reader = new FileReader();
+
+        reader.onload = function(e){
+
+            preview.src = e.target.result;
+            preview.style.display = 'block';
+
+        }
+
+        reader.readAsDataURL(file);
+
+    });
+
+}
+
+
+
+// =======================
+// HAPUS FORM
+// =======================
+
+function hapusForm(id){
+
+    const form = document.getElementById('form-'+id);
+
+    if(form){
+
+        form.remove();
+
+    }
+
+}
+
+
+
+// =======================
+// BUAT PDF
+// =======================
+
+async function buatPDF(isPreview=false){
+
+    const forms = document.querySelectorAll('.form-box');
+
+    if(forms.length === 0){
+
+        alert("Belum ada data!");
+        return;
+
+    }
+
+    const { jsPDF } = window.jspdf;
+
+    const doc = new jsPDF({
+        orientation:'p',
+        unit:'mm',
+        format:'a4'
+    });
+
+
+
+    for(let i=0; i<forms.length; i++){
+
+        const form = forms[i];
+
+        const nama = form.querySelector('.namaInput').value.trim();
+
+        const link = form.querySelector('.linkInput').value.trim();
+
+        const file = form.querySelector('.fileInput').files[0];
+
+
+
+        // VALIDASI
+
+        if(!link){
+
+            alert(`Link URL pada Data ${i+1} kosong!`);
+            return;
+
+        }
+
+        if(!file){
+
+            alert(`Foto pada Data ${i+1} belum dipilih!`);
+            return;
+
+        }
+
+
+
+        // =======================
+        // BACA FILE
+        // =======================
+
+        const imageData = await bacaFile(file);
+
+        const img = await loadImage(imageData);
+
+
+
+        // Convert ke JPEG
+        const canvas = document.createElement('canvas');
+
+        const ctx = canvas.getContext('2d');
+
+        canvas.width = img.width;
+        canvas.height = img.height;
+
+        ctx.fillStyle = "#ffffff";
+
+        ctx.fillRect(0,0,canvas.width,canvas.height);
+
+        ctx.drawImage(img,0,0);
+
+        const finalImage = canvas.toDataURL("image/jpeg",0.95);
+
+
+
+
+        // =======================
+        // QR CODE
+        // =======================
+
+        const qrDiv = document.createElement('div');
+
+        new QRCode(qrDiv,{
+            text:link,
+            width:250,
+            height:250,
+            correctLevel:QRCode.CorrectLevel.H
+        });
+
+        await tunggu(300);
+
+        const qrCanvas = qrDiv.querySelector('canvas');
+
+        const qrData = qrCanvas.toDataURL("image/jpeg");
+
+
+
+
+        // =======================
+        // HALAMAN BARU
+        // =======================
+
+        if(i > 0){
+
+            doc.addPage();
+
+        }
+
+
+
+
+        // =======================
+        // UKURAN KERTAS
+        // =======================
+
+        const pageW = 210;
+
+
+
+        // =======================
+        // NAMA
+        // =======================
+
+        if(nama){
+
+            doc.setFont("helvetica","bold");
+
+            doc.setFontSize(14);
+
+            doc.text(nama.toUpperCase(),15,15);
+
+        }
+
+
+
+
+        // =======================
+        // QR CODE
+        // =======================
+
+        const qrSize = 40;
+
+        const qrX = (pageW - qrSize) / 2;
+
+        doc.addImage(qrData,'JPEG',qrX,20,qrSize,qrSize);
+
+
+
+
+        // =======================
+        // FOTO
+        // =======================
+
+        const maxW = 180;
+        const maxH = 190;
+
+        let imgW = img.width;
+        let imgH = img.height;
+
+        const ratio = Math.min(maxW / imgW, maxH / imgH);
+
+        imgW *= ratio;
+        imgH *= ratio;
+
+        const imgX = (pageW - imgW) / 2;
+
+        const imgY = 70;
+
+        doc.addImage(finalImage,'JPEG',imgX,imgY,imgW,imgH);
+
+    }
+
+
+
+    // =======================
+    // PREVIEW / DOWNLOAD
+    // =======================
+
+    if(isPreview){
+
+        const blobUrl = doc.output('bloburl');
+
+        window.open(blobUrl,'_blank');
+
+    }else{
+
+        doc.save("PDF_Multi_Halaman.pdf");
+
+    }
+
+}
+
+
+
+// =======================
+// FUNCTIONS
+// =======================
+
+function bacaFile(file){
+
+    return new Promise((resolve,reject)=>{
+
+        const reader = new FileReader();
+
+        reader.onload = e => resolve(e.target.result);
+
+        reader.onerror = reject;
+
+        reader.readAsDataURL(file);
+
+    });
+
+}
+
+
+
+function loadImage(src){
+
+    return new Promise((resolve,reject)=>{
+
+        const img = new Image();
+
+        img.onload = ()=>resolve(img);
+
+        img.onerror = reject;
+
+        img.src = src;
+
+    });
+
+}
+
+
+
+function tunggu(ms){
+
+    return new Promise(resolve=>setTimeout(resolve,ms));
+
+}
+
+
+
+// =======================
+// FORM PERTAMA
+// =======================
+
+tambahForm();
+
+</script>
+
+</body>
+</html>
